@@ -33,7 +33,8 @@ class JenkinsMaster(core.Stack):
         if config['DEFAULT']['fargate_enabled'] == "yes" or not config['DEFAULT']['ec2_enabled'] == "yes":
             # Task definition details to define the Jenkins master container
             self.jenkins_task = ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
-                image=ecs.ContainerImage.from_ecr_repository(self.container_image.repository),
+                # image=ecs.ContainerImage.from_ecr_repository(self.container_image.repository),
+                image=ecs.ContainerImage.from_docker_image_asset(self.container_image),
                 container_port=8080,
                 enable_logging=True,
                 environment={
@@ -94,7 +95,6 @@ class JenkinsMaster(core.Stack):
                 environment={
                     # https://github.com/jenkinsci/docker/blob/master/README.md#passing-jvm-parameters
                     'JAVA_OPTS': '-Djenkins.install.runSetupWizard=false',
-                    # https://github.com/jenkinsci/configuration-as-code-plugin/blob/master/README.md#getting-started
                     'CASC_JENKINS_CONFIG': '/config-as-code.yaml',
                     'network_stack': self.vpc.stack_name,
                     'cluster_stack': self.cluster.stack_name,
@@ -254,3 +254,13 @@ class JenkinsMaster(core.Stack):
             )
         )
         # END OF JENKINS ECS PLUGIN IAM POLICIES #
+        self.jenkins_master_task.add_to_task_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "*"
+                ],
+                resources=[
+                    self.worker.worker_logs_group.log_group_arn
+                ]
+            )
+        )
